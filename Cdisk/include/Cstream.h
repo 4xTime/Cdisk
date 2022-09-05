@@ -7,16 +7,11 @@ enum MODES {
 	OUT_SPACE = 0,
 };
 
-typedef struct Varieble {
-	int LineCount;
-	int CharCount;
-	char DATA[BUFFORSIZE];
-}Var;
-
 
 int GetNumberOfElementsInFile(const char* F_PATH, enum MODES Mode);
 int GetNumberOfLineInFile(const char* F_PATH);
-char LineRead(const char* F_PATH, char DATA[], int CharCount);
+char ReadFileContent(const char* F_PATH, char DATA[], int Lenght);
 void FindWord(const char* F_PATH,const char* WORD);
+void FindCharacter(const char* F_PATH, char Character[]);
 
 #endif
