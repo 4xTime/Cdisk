@@ -8,18 +8,25 @@ int GetNumberOfLineInFile(const char* F_PATH) {
 	FILE* File;
 
 	int LineCount = 1;
-	char tempchar = 0;
+	int tempchar = 0;
 
-	if (fopen_s(&File, F_PATH, "r") == 0) {
-		while (tempchar = fgetc(File)) {
-			if (tempchar == '\n') {
-				LineCount = LineCount + 1;
-			}
-			if (feof(File)) { break; }
-		}
+	if (fopen_s(&File, F_PATH, "r") != 0) {
+		printf("Cannot open file %s.\n", F_PATH);
+		return -1;
 	}
-	else {
-		printf("Fail to open a file");
+
+	while ((tempchar = fgetc(File)) != EOF) {
+		if (tempchar == '\n') {
+			LineCount = LineCount + 1;
+		}
+
+
+	}
+
+	if (ferror(File)) {
+		printf("An error occurred while reading the file");
+		fclose(File);
+		return -1;
 	}
 	fclose(File);
 	return LineCount;
@@ -28,116 +35,121 @@ int GetNumberOfLineInFile(const char* F_PATH) {
 int GetNumberOfElementsInFile(const char* F_PATH, enum MODES Mode) {
 	FILE* File;
 
-	char tempchar = 0;
-	int CharCount = -1;
+	int tempchar;
+	int CharCount = 0;
 
-	if (fopen_s(&File, F_PATH, "r") == 0) {
-		if (Mode == OUT_SPACE) {
-			while (tempchar = fgetc(File)) {
-				if (tempchar != ' ' && tempchar != '  ' && tempchar != '   ' && tempchar != '    ')
-					CharCount = CharCount + 1;
-				if (feof(File)) { break; }
-			}
-		}
-		else {
-			CharCount = CharCount + 1;
-			while (fgetc(File) != EOF) {
+	if (fopen_s(&File, F_PATH, "r") != 0) {
+		printf("Cannot open file %s.\n", F_PATH);
+		return -1;
+	}
+
+	if (Mode == OUT_SPACE) {
+		while ((tempchar = fgetc(File)) != EOF) {
+			//For OUT_SPACE checknig white characters (max 4) 
+			if (tempchar != ' ' && tempchar != '  ' && tempchar != '   ' && tempchar != '    ')
 				CharCount = CharCount + 1;
-			}
 		}
 	}
-	else {
-		printf("Fail to open a file");
+	else if (Mode == WITH_SPACE) {
+		//WITH_SPACE mode get all elements
+		//CharCount = CharCount + 1;
+		while (fgetc(File) != EOF) {
+			CharCount = CharCount + 1;
+		}
 	}
+
 	fclose(File);
-	return CharCount;
+	return CharCount - 1;
 }
 
-char ReadFileContent(const char* F_PATH, char DATA[], const int Lenght) {
+int ReadFileContent(const char* F_PATH, char DATA[], const int Length) {
 	FILE* File;
-	if (fopen_s(&File, F_PATH, "r") == 0) {
-		for (int i = 0; i < (Lenght); i++) {
-			if (File != NULL) {
-				DATA[i] = fgetc(File);
-			}
-		}
+	if (fopen_s(&File, F_PATH, "r") != 0) {
+		printf("Cannot open file %s.\n", F_PATH);
+		return -1;
 	}
-	else {
-		printf("Fail to open a file");
+	int i = 0;
+	while (i < Length && File != NULL && !feof(File)) {
+		DATA[i] = fgetc(File);
+		i++;
 	}
 	fclose(File);
-	return *DATA;
+	return 0;
 }
 
+int FindWord(const char* F_PATH, const char* F_WORD) {
 
-void FindWord(const char* F_PATH, char F_WORD[]) {
+	int num_elements = GetNumberOfElementsInFile(F_PATH, WITH_SPACE);
 
-	char* WORD = (char*)malloc(strlen(F_WORD));
-	WORD = F_WORD;
+	// Allocating memory for WORD 
+	char* WORD = (char*)malloc(strlen(F_WORD) + 1);
+	if (WORD != NULL) {
+		strcpy_s(WORD, (strlen(F_WORD) + 1), F_WORD);
+	}
+	else {
+		fprintf(stderr, "Memory allocation error for WORD in FindWord()\n");
+		return -1;
+	}
+	//DATA for entire File content
+	//new decleration of DATA as a char*
+	char* DATA = (char*)malloc(num_elements);
+	if (DATA == NULL) {
+		free(WORD);
+		return;
+	}
+	//Arr for searching word
+	char* Arr = (char*)malloc(num_elements);
+	if (DATA == NULL) {
+		free(WORD);
+		free(DATA);
+		return;
+	}
 
+	//assigning file content to DATA
+	ReadFileContent(F_PATH, DATA, num_elements);
 
-	char DATA[BUFFORSIZE];
-	char Arr[BUFFORSIZE] = { 0 };
-
-	int count = 0;
-	int Arr_count = 0;
-
-	ReadFileContent(F_PATH, DATA, GetNumberOfElementsInFile(F_PATH, WITH_SPACE));
-
-
-	int endPlace = 0;
-	int FirstPlace = 0;
 	int j = 0;
-	for (int i = 0; i < GetNumberOfElementsInFile(F_PATH, WITH_SPACE); i++) {
-		if (DATA[i] == WORD[j] && DATA[i + 1] == WORD[j + 1]) {
-			endPlace = i;
+	int POS = 0;
+	int LineNum = 0;
+	int Break = 0;
+	//Searching for word and place it into Arr
+	for (int i = 0; i < num_elements; i++) {
+		if (DATA[i] == '\n') { LineNum++; }
+		if (i + 1 < num_elements && DATA[i] == WORD[j] && DATA[i + 1] == WORD[j + 1]) {
 			Arr[j] = DATA[i];
 			j++;
 		}
 		else { j = 0; }
 	}
-	FirstPlace = (endPlace - (strlen(WORD) - 1));
-
-
-	int CharTest = 0;
-	for (int i = 0; i < strlen(Arr); i++) {
-		if (Arr[i] == WORD[i]) { CharTest++; }
-		if (CharTest == (strlen(WORD) - 1)) { printf("Found IT"); }
-		printf("%c", Arr[i]);
+	//Temp var to store result
+	char* TempVar = (char*)malloc(strlen(WORD) + 1);
+	if (TempVar == NULL) {
+		free(WORD);
+		free(DATA);
+		free(Arr);
+		return;
 	}
-	WORD = 0;
-	free(WORD);
-}
-
-void FindCharacter(const char* F_PATH, char Character[]) {
+	//Copying Arr to TempVar
+	strncpy_s(TempVar, (strlen(WORD) + 1), Arr, strlen(WORD) - 1);
 
 
-	char* WORD = (char*)malloc(strlen(Character));
-	WORD = Character;
-
-
-	char DATA[BUFFORSIZE];
-	char Arr[BUFFORSIZE] = { 0 };
-
-	int count = 0;
-	int Arr_count = 0;
-
-	ReadFileContent(F_PATH, DATA, GetNumberOfElementsInFile(F_PATH, WITH_SPACE));
-
-
-	for (int i = 0; i < GetNumberOfElementsInFile(F_PATH, WITH_SPACE); i++) {
-		if (DATA[i] == WORD[count]) {
-			for (int j = i; DATA[j] == WORD[count] && j < (i + strlen(WORD)); j++) {
-				Arr[Arr_count] = DATA[j];
-				count++;
-				Arr_count++;
-			}
-			count = 0;
+	int Positive = 0;
+	for (int i = 0; i < strlen(F_WORD + 1); i++) {
+		if (TempVar[i] == F_WORD[i]) {
+			Positive++;
 		}
 	}
-	for (int i = 0; i < strlen(Arr); i++) {
-		printf("%c", Arr[i]);
-	}
-	WORD = 0;
+
 	free(WORD);
+	free(DATA);
+	free(Arr);
+	free(TempVar);
+
+	if (Positive == strlen(F_WORD) - 1) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+
 }
